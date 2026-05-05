@@ -15,7 +15,7 @@ HL_API         = "https://api.hyperliquid.xyz/info"
 # ─────────────────────────────────────────
 #  STATE
 # ─────────────────────────────────────────
-cash       = 10000.0
+cash       = 100.0
 position   = None   # { coin, side, entry, qty, cost }
 price_hist = {c: [] for c in COINS}
 wins       = 0
