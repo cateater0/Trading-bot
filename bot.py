@@ -8,8 +8,8 @@ from datetime import datetime
 # ─────────────────────────────────────────
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "JOUW_TOKEN_HIER")
 CHAT_ID        = os.environ.get("CHAT_ID", "6467324755")
-SUPABASE_URL   = os.environ.get("SUPABASE_URL", "")
-SUPABASE_KEY   = os.environ.get("SUPABASE_KEY", "")
+SUPABASE_URL   = os.environ.get("SUPABASE_URL", "https://uobkqampgkwxwhztcfcp.supabase.co")
+SUPABASE_KEY   = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvYmtxYW1wZ2t3eHdoenRjZmNwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODI0Njg2MiwiZXhwIjoyMDkzODIyODYyfQ.VbA_sDAyt3Kqm43uor-mUE_7PVb7tlDo9VZ5e2L3cc0")
 COINS          = ["kPEPE", "kBONK", "FARTCOIN"]
 CHECK_INTERVAL = 30
 HL_API         = "https://api.hyperliquid.xyz/info"
