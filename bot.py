@@ -8,6 +8,8 @@ from datetime import datetime
 # ─────────────────────────────────────────
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "JOUW_TOKEN_HIER")
 CHAT_ID        = os.environ.get("CHAT_ID", "6467324755")
+SUPABASE_URL   = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY   = os.environ.get("SUPABASE_KEY", "")
 COINS          = ["kPEPE", "kBONK", "FARTCOIN"]
 CHECK_INTERVAL = 30
 HL_API         = "https://api.hyperliquid.xyz/info"
@@ -36,6 +38,81 @@ def send(msg: str):
         requests.post(url, json={"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}, timeout=10)
     except Exception as e:
         print(f"Telegram fout: {e}")
+
+# ─────────────────────────────────────────
+#  SUPABASE (database voor dashboard)
+# ─────────────────────────────────────────
+def supabase_request(table, method="POST", payload=None):
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return None
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+    }
+    try:
+        if method == "POST":
+            requests.post(url, headers=headers, json=payload, timeout=10)
+    except Exception as e:
+        print(f"Supabase fout: {e}")
+
+def save_status():
+    """Schrijf live status naar Supabase voor dashboard."""
+    port_val = cash
+    upnl = 0
+    if position:
+        p = price_hist[position["coin"]][-1] if price_hist[position["coin"]] else position["entry"]
+        if position["side"] == "long":
+            upnl = position["qty"] * p - position["cost"]
+            port_val = cash + position["qty"] * p
+        else:
+            upnl = position["borrowed"] - position["qty"] * p
+            port_val = cash + upnl
+
+    coins_data = {}
+    for coin in COINS:
+        prices = price_hist[coin]
+        if prices:
+            entry = {"price": prices[-1], "history": prices[-50:]}
+            if len(prices) >= 25:
+                e9 = ema(prices, 9)
+                e21 = ema(prices, 21)
+                r = rsi(prices, 14)
+                m = momentum(prices, 5)
+                entry.update({
+                    "ema9": e9, "ema21": e21, "rsi": r, "momentum": m,
+                    "trend": "bull" if e9 and e21 and e9 > e21 else "bear"
+                })
+            coins_data[coin] = entry
+
+    payload = {
+        "portfolio_value": port_val,
+        "cash": cash,
+        "position_side": position["side"] if position else None,
+        "position_coin": position["coin"] if position else None,
+        "position_entry": position["entry"] if position else None,
+        "position_qty": position["qty"] if position else None,
+        "unrealized_pnl": upnl,
+        "total_trades": closed,
+        "wins": wins,
+        "coins_data": coins_data
+    }
+    supabase_request("bot_status", "POST", payload)
+
+def save_trade(trade_type, coin, side, price, qty, profit=None, profit_pct=None, reason=None):
+    payload = {
+        "trade_type": trade_type,
+        "coin": coin,
+        "side": side,
+        "price": price,
+        "quantity": qty,
+        "profit": profit,
+        "profit_pct": profit_pct,
+        "reason": reason
+    }
+    supabase_request("bot_trades", "POST", payload)
 
 # ─────────────────────────────────────────
 #  INDICATOREN
@@ -159,6 +236,7 @@ def execute(coin, signal, e9, e21, r, mom, price):
         )
         send(msg)
         daily_log.append(f"LONG {coin} @ ${price:,.0f}")
+        save_trade("OPEN", coin, "long", price, qty)
         print(f"TRADE: LONG {coin} @ ${price:,.2f}")
 
     elif signal == "short" and position is None:
@@ -182,6 +260,7 @@ def execute(coin, signal, e9, e21, r, mom, price):
         )
         send(msg)
         daily_log.append(f"SHORT {coin} @ ${price:,.0f}")
+        save_trade("OPEN", coin, "short", price, qty)
         print(f"TRADE: SHORT {coin} @ ${price:,.2f}")
 
     elif signal in ("close_tp", "close_sl") and position and position["coin"] == coin:
@@ -214,6 +293,7 @@ def execute(coin, signal, e9, e21, r, mom, price):
         )
         send(msg)
         daily_log.append(f"SLUIT {coin} P&L: {'+'if profit>=0 else ''}${profit:,.2f}")
+        save_trade("CLOSE", coin, position["side"], price, position["qty"], profit, pnl_pct, reden)
         position = None
         print(f"TRADE GESLOTEN: {coin} P&L ${profit:,.2f}")
 
@@ -384,6 +464,9 @@ def main():
                 tick_count += 1
                 if tick_count % 10 == 0:
                     status_update()
+
+                # Schrijf live status naar Supabase voor dashboard
+                save_status()
 
             port_val = cash
             if position:
