@@ -15,12 +15,12 @@ HL_API         = "https://api.hyperliquid.xyz/info"
 # ─────────────────────────────────────────
 #  STATE
 # ─────────────────────────────────────────
-cash       = 100.0
+cash       = 10000.0
 position   = None   # { coin, side, entry, qty, cost }
 price_hist = {c: [] for c in COINS}
 wins       = 0
 closed     = 0
-start_val  = 100.0
+start_val  = 10000.0
 daily_log  = []
 last_daily = datetime.now().date()
 
